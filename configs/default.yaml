@@ -1,0 +1,94 @@
+# Model Configuration
+model:
+  question_encoder: "sentence-transformers/all-MiniLM-L6-v2"
+  answer_encoder: "sentence-transformers/all-MiniLM-L6-v2"
+  embedding_dim: 384
+  projection_dim: 256
+  dropout: 0.1
+  pooling_mode: "mean"
+
+# Training Configuration
+training:
+  batch_size: 32
+  num_epochs: 10
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  warmup_steps: 500
+  max_grad_norm: 1.0
+  gradient_accumulation_steps: 1
+  eval_steps: 500
+  save_steps: 1000
+  logging_steps: 100
+  seed: 42
+
+# Loss Configuration
+loss:
+  temperature: 0.07
+  margin: 0.5
+  adversarial_weight: 0.3
+  unanswerable_weight: 0.4
+
+# Data Configuration
+data:
+  max_question_length: 128
+  max_answer_length: 256
+  max_context_length: 512
+  train_size: 0.8
+  val_size: 0.1
+  test_size: 0.1
+  num_workers: 4
+  cache_dir: "./data/cache"
+  adversarial_ratio: 0.3
+  unanswerable_ratio: 0.2
+
+# Dataset Configuration
+datasets:
+  squad_v2:
+    enabled: true
+    name: "squad_v2"
+    max_samples: 50000
+  natural_questions:
+    enabled: true
+    name: "natural_questions"
+    config: "default"
+    max_samples: 20000
+
+# Adversarial Generation Configuration
+adversarial:
+  num_negatives: 2
+  entity_replacement: true
+  semantic_similarity_threshold: 0.7
+  max_edit_distance: 3
+
+# Evaluation Configuration
+evaluation:
+  metrics:
+    - "f1"
+    - "precision"
+    - "recall"
+    - "accuracy"
+    - "auc"
+  thresholds: [0.3, 0.4, 0.5, 0.6, 0.7]
+  save_predictions: true
+  cross_dataset_eval: true
+
+# Paths
+paths:
+  output_dir: "./models"
+  cache_dir: "./data/cache"
+  log_dir: "./logs"
+  results_dir: "./results"
+
+# MLflow Configuration
+mlflow:
+  experiment_name: "contrastive-qa-verifier"
+  tracking_uri: "./mlruns"
+  run_name: null
+  log_artifacts: true
+
+# System Configuration
+system:
+  device: "cuda"
+  mixed_precision: true
+  num_workers: 4
+  pin_memory: true
