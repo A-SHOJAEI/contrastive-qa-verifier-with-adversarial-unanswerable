@@ -1,15 +1,15 @@
 # Contrastive QA Verifier with Adversarial Unanswerable Detection
 
-A dual-encoder system that learns to verify question-answer pair validity through contrastive learning on SQuAD 2.0 and Natural Questions. The model is trained with adversarial generation of plausible-but-incorrect answers to distinguish between correct answers, near-miss answers, and unanswerable questions.
+A dual-encoder system that learns to verify question-answer pair validity through contrastive learning on SQuAD 2.0. The model is trained with adversarial generation of plausible-but-incorrect answers to distinguish between correct answers, near-miss answers, and unanswerable questions.
 
 ## Features
 
 - Dual-encoder architecture with separate question and answer transformers
-- Contrastive learning with temperature-scaled similarity
-- Adversarial negative answer generation with entity replacement
+- Contrastive learning with temperature-scaled similarity (InfoNCE loss)
+- Adversarial negative answer generation with entity replacement and answer swapping
 - Support for unanswerable question detection (SQuAD 2.0)
 - Comprehensive evaluation metrics (F1, Precision, Recall, AUC)
-- Cross-dataset transfer evaluation
+- MLflow experiment tracking
 
 ## Installation
 
@@ -35,7 +35,7 @@ The training script will:
 ### Evaluation
 
 ```bash
-python scripts/evaluate.py --checkpoint models/best_model
+python scripts/evaluate.py --checkpoint models/best_model --output_dir results/
 ```
 
 ### Inference
@@ -51,22 +51,23 @@ python scripts/predict.py --checkpoint models/best_model \
 The system consists of three main components:
 
 ### 1. Dual Encoder
-- Separate encoders for questions and answers (default: all-MiniLM-L6-v2)
+- Separate encoders for questions and answers (all-MiniLM-L6-v2)
 - Mean pooling over token embeddings
-- Projection heads to map embeddings to shared space (default: 256 dimensions)
+- Projection heads mapping to a shared 256-dimensional space
+- Total parameters: 45.8M
 
 ### 2. Contrastive Learning
-- Temperature-scaled cosine similarity
+- Temperature-scaled cosine similarity (tau = 0.07)
 - InfoNCE loss for positive Q-A pairs
-- Adversarial margin loss for hard negatives
+- Adversarial margin loss for hard negatives (margin = 0.5)
 
 ### 3. Answerability Classifier
 - Binary classifier on concatenated Q-A embeddings
-- Trained jointly with verification objective
+- Trained jointly with verification objective (weight = 0.4)
 
 ## Adversarial Generation
 
-The system generates challenging negative examples through entity swapping, context distractors, and semantically similar answers to improve model robustness.
+The system generates challenging negative examples through entity swapping, context distractors, and semantically similar answers to improve model robustness. During training, 10,537 adversarial examples and 7,048 answer-swapped examples were generated from the base SQuAD 2.0 training split.
 
 ## Configuration
 
@@ -80,36 +81,70 @@ For ablation studies, see `configs/ablation.yaml`.
 
 ## Methodology
 
-This project introduces a novel approach to QA verification by combining three key innovations:
+This project introduces an approach to QA verification by combining three techniques:
 
 1. **Dual Contrastive Learning**: Uses separate question and answer encoders with temperature-scaled InfoNCE loss to learn discriminative embeddings that distinguish correct from incorrect answers.
 
-2. **Adversarial Negative Mining**: Generates hard negatives through entity replacement and semantic similarity matching, creating challenging examples that improve model robustness beyond standard random negatives.
+2. **Adversarial Negative Mining**: Generates hard negatives through entity replacement and answer swapping, creating challenging examples that push the model beyond trivial discrimination.
 
-3. **Joint Answerability Prediction**: Simultaneously learns to verify answer correctness and detect unanswerable questions (SQuAD 2.0) through multi-task learning, enabling robust handling of ambiguous cases.
-
-The combination of contrastive learning with adversarial training and joint answerability classification enables more robust QA verification than single-task approaches.
+3. **Joint Answerability Prediction**: Simultaneously learns to verify answer correctness and detect unanswerable questions through multi-task learning on SQuAD 2.0.
 
 ## Results
 
-Training completed on SQuAD 2.0 (50,000 samples, 10 epochs). The model achieved steady convergence with the following progression:
+### Training Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Base Encoder | all-MiniLM-L6-v2 |
+| Model Parameters | 45,755,136 |
+| Dataset | SQuAD 2.0 |
+| Training Samples | 67,585 (incl. adversarial) |
+| Validation Samples | 5,000 |
+| Epochs | 10 |
+| Batch Size | 32 |
+| Learning Rate | 0.0001 |
+| Device | CUDA |
+
+### Training Loss Progression
 
 | Epoch | Train Loss | Val Loss |
 |-------|-----------|----------|
-| 1 | 3.0115 | 4.5329 |
-| 2 | 2.5902 | 4.5479 |
-| 5 | 2.3680 | 4.5676 |
-| 10 | 2.2404 | 4.6036 |
+| 1     | 3.0181    | 4.5574   |
+| 2     | 2.5884    | 4.5543   |
+| 3     | 2.4790    | 4.5357   |
+| 4     | 2.4157    | 4.5981   |
+| 5     | 2.3681    | 4.5537   |
+| 6     | 2.3323    | 4.5908   |
+| 7     | 2.3084    | 4.6251   |
+| 8     | 2.2791    | 4.6186   |
+| 9     | 2.2570    | 4.5828   |
+| 10    | 2.2378    | 4.6025   |
 
-Best validation loss: 4.5069 (achieved at step 2000)
+Best validation loss: **4.5209** at step 1,500 (Epoch 1).
 
-Model details: 45.8M parameters, trained on CUDA with mixed precision.
+The training loss decreased steadily from 3.02 to 2.24, indicating the model learned meaningful representations on the training data. Validation loss plateaued early around 4.52--4.60, with the best checkpoint occurring at step 1,500.
 
-To evaluate the model and obtain detailed metrics:
+### Evaluation Results (Validation Set, 5,000 samples)
 
-```bash
-python scripts/evaluate.py --checkpoint models/best_model --output_dir results/
-```
+| Metric    | Value  |
+|-----------|--------|
+| Accuracy  | 0.5064 |
+| AUC       | 0.5035 |
+| Precision | 0.0000 |
+| Recall    | 0.0000 |
+| F1        | 0.0000 |
+
+The model's similarity scores cluster below the tested classification thresholds (0.3--0.7), resulting in all-negative predictions. The AUC of 0.5035 indicates limited discriminative power on the validation set at this stage of development.
+
+### Analysis
+
+The gap between training loss convergence and validation performance suggests the model overfits to training-specific patterns without generalizing the contrastive similarity structure to held-out data. Potential directions for improvement include:
+
+- Lower temperature values for sharper contrastive distributions
+- Larger projection dimensions or alternative pooling strategies
+- Hard negative mining with dynamic difficulty scheduling
+- Pre-training the encoders jointly before adding the contrastive objective
+- Extended hyperparameter search over learning rate and warmup schedules
 
 ## Project Structure
 
@@ -123,9 +158,11 @@ contrastive-qa-verifier-with-adversarial-unanswerable/
 │   └── utils/             # Configuration and utilities
 ├── scripts/
 │   ├── train.py           # Training script
-│   └── evaluate.py        # Evaluation script
+│   ├── evaluate.py        # Evaluation script
+│   └── predict.py         # Inference script
 ├── tests/                 # Unit tests
 ├── configs/               # Configuration files
+├── results/               # Evaluation results
 └── notebooks/             # Exploration notebooks
 ```
 

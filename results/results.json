@@ -1,0 +1,93 @@
+{
+  "project": "contrastive-qa-verifier-with-adversarial-unanswerable",
+  "model": {
+    "architecture": "ContrastiveQAVerifier (Dual Encoder)",
+    "base_encoder": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "projection_dim": 256,
+    "total_parameters": 45755136,
+    "pooling": "mean"
+  },
+  "training": {
+    "dataset": "SQuAD 2.0",
+    "train_samples": 67585,
+    "validation_samples": 5000,
+    "adversarial_examples_generated": 10537,
+    "answer_swapped_examples": 7048,
+    "epochs": 10,
+    "batch_size": 32,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.01,
+    "warmup_steps": 500,
+    "seed": 42,
+    "device": "cuda",
+    "total_steps": 21130,
+    "training_time_hours": 1.88,
+    "best_checkpoint": "models/best_model",
+    "best_checkpoint_step": 1500,
+    "loss": {
+      "temperature": 0.07,
+      "margin": 0.5,
+      "adversarial_weight": 0.3,
+      "unanswerable_weight": 0.4
+    }
+  },
+  "training_history": {
+    "train_loss": {
+      "epoch_1": 3.0181,
+      "epoch_2": 2.5884,
+      "epoch_3": 2.4790,
+      "epoch_4": 2.4157,
+      "epoch_5": 2.3681,
+      "epoch_6": 2.3323,
+      "epoch_7": 2.3084,
+      "epoch_8": 2.2791,
+      "epoch_9": 2.2570,
+      "epoch_10": 2.2378
+    },
+    "val_loss": {
+      "epoch_1": 4.5574,
+      "epoch_2": 4.5543,
+      "epoch_3": 4.5357,
+      "epoch_4": 4.5981,
+      "epoch_5": 4.5537,
+      "epoch_6": 4.5908,
+      "epoch_7": 4.6251,
+      "epoch_8": 4.6186,
+      "epoch_9": 4.5828,
+      "epoch_10": 4.6025
+    },
+    "best_val_loss": 4.5209,
+    "best_val_loss_step": 1500,
+    "final_train_loss": 2.2378,
+    "final_val_loss": 4.6025
+  },
+  "evaluation": {
+    "split": "validation",
+    "num_samples": 5000,
+    "num_positives": 2468,
+    "num_negatives": 2532,
+    "best_threshold": 0.50,
+    "metrics": {
+      "accuracy": 0.5064,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "auc": 0.5035
+    },
+    "confusion_matrix": {
+      "true_positives": 0,
+      "true_negatives": 2532,
+      "false_positives": 0,
+      "false_negatives": 2468
+    },
+    "metrics_by_threshold": {
+      "0.3": {"accuracy": 0.5064, "precision": 0.0, "recall": 0.0, "f1": 0.0},
+      "0.4": {"accuracy": 0.5064, "precision": 0.0, "recall": 0.0, "f1": 0.0},
+      "0.5": {"accuracy": 0.5064, "precision": 0.0, "recall": 0.0, "f1": 0.0},
+      "0.6": {"accuracy": 0.5064, "precision": 0.0, "recall": 0.0, "f1": 0.0},
+      "0.7": {"accuracy": 0.5064, "precision": 0.0, "recall": 0.0, "f1": 0.0}
+    },
+    "notes": "Model similarity scores cluster below 0.3, resulting in all-negative predictions across tested thresholds. AUC near 0.50 indicates limited discriminative power at the current training stage. The contrastive loss converged on training data (3.02 to 2.24) but validation loss plateaued early (best 4.52 at step 1500), suggesting the model requires further hyperparameter tuning or architectural adjustments for stronger generalization."
+  }
+}
